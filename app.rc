@@ -1,0 +1,48 @@
+fn conf_enable_bible {
+    enable_bible=yes
+    conf_enable_app bible
+}
+
+fn bible_init {
+    if (! ~ $#enable_bible 0 ) {
+        handler_body_main=bible_text
+        handlers_bar_left=()
+        handlers_body_foot=()
+       
+    }
+}
+
+fn bible_text {
+    req_book=`{basename $req_path};
+    # List books in the bible
+    if (~ $req_path */[bB]ible/) {
+        ifs=')'
+        s=`{kjv -l}
+        echo '<ul>'
+        for (line in $s) {
+            ifs='('
+            lineToEval=`{echo $line}
+            part1=$lineToEval(1)
+            part2=$lineToEval(2)
+            if (! ~ $part2 '') {
+                echo '<li class="bible-book-list"><a href="'$part2'">'$part1'</a></li>'
+            }
+        }
+        echo '</ul>'
+    }
+    # Get FULL book
+    if not if (~ $req_path */[bB]ible/$req_book) {
+        echo '<a href="$req_path/..">Return</a>'
+        chapters=`{kjv $req_book | /usr/bin/grep -E -o '[0-9]+:[0-9]+' | uniq | awk -F '[ :]' '{print $1}' | uniq}
+        if (! ~ $#chapters 0 && ! ~ $req_book *:*) {
+            echo '<h1>Chapters present in '$req_book'</h1>'
+            for (chapter in $chapters) {
+                echo '<a href="'$req_path:$chapter'">'$chapter'</a>'
+            }
+            echo '<br/>'
+        }
+        echo '<ul>'
+        echo `{kjv $req_book | sed 's/$/<\/li>/g' | sed 's/^/<li class="bible-verse-list" style="padding-top:0.2rem;">/g'}
+        echo '</ul><a href="$req_path/..">Return</a>'
+    }
+}
